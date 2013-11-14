@@ -51,21 +51,23 @@ class NeuralNetwork:
                     2*scale *
                     (np.random.rand(*bias.shape)-0.5))
 
-    def __call__(self, potentials):
+    def __call__(self, potentials, trace=False):
         potentials = np.matrix(potentials, dtype=np.float64
                                ).reshape(len(potentials), 1)
 
-        trace = []
-        trace.append(potentials)
+        if trace:
+            trace = [potentials]
         
         for index, weight_matrix in enumerate(self.weights):
             potentials = weight_matrix * potentials
             if self.bias is not None:
                 potentials += self.bias[index]
             potentials = self.sigmoid(potentials)
-            trace.append(potentials)
+            if trace:
+                trace.append(potentials)
             
-        self.trace = trace
+        if trace:
+            return trace
         return potentials
 
     def __repr__(self):
@@ -73,41 +75,25 @@ class NeuralNetwork:
                 "\n".join(map(repr,self.weights))+"\n"
                 "bias:\n"+
                 "\n".join(map(repr, self.bias)))
-    
-def train(network, tests, iterations=50):
-    def error(model):
-        return sum(rms(model(potentials), output)
-                   for potentials, output in tests
-                   )/len(tests)
-    temp = anneal(network, error, iterations)
-    print(error(temp)); return temp
 
-def rms(actual, expected):
-    return np.sum(np.square(expected - actual))
+def backpropagate(network, tests, iterations=50):
+    for _ in range(iterations):
+        traces = [(network(test[0], True), test[1]) for test in tests]
+        errors =[sum(expected-trace[-1] for trace,expected in traces)]
+        #trace = np.sum(trace[0] for trace in traces)
+        print("\n".join(map(str,traces)))
+        print('error')
+        print(errors)
+        #print(trace)
+        for index, weights in reversed(
+            list(enumerate(network.weights))):
+            
+            print(index)
+            error = errors[-1]
+            
 
-def anneal(model, error, iterations=50):
-
-    best = model.copy()
-    
-    min_err = error(model)
-    prev_err = min_err
-    
-    for i in range(1, iterations):
-        neighbor = model.copy()
-        neighbor.mutate()
-        err = error(neighbor)
-        if err < prev_err or accept(err-prev_err, i):
-            model, prev_err = neighbor, err
-            if err < min_err:
-                best, min_err = neighbor, err
-
-    return best
-
-def accept(delta, i):
-    return math.exp(-delta/.95**i) > random.random()
-
-if __name__ == '__main__':
-    global x
-    x = NeuralNetwork.fromlayers([2,5,1])
-    x = train(x, [((1,1),0), ((0,0),0), ((1,0), 1), ((0,1),1)], 500)
-    print([x([a,b]) for a in [0,1] for b in [0,1]])
+if True:
+    global network
+    tests = [((0,0),0),((0,1),1),((1,0),1),((1,1),0)]
+    network = NeuralNetwork.fromlayers([2,3,1])
+    backpropagate(network, tests, 1)
