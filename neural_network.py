@@ -76,24 +76,56 @@ class NeuralNetwork:
                 "bias:\n"+
                 "\n".join(map(repr, self.bias)))
 
-def backpropagate(network, tests, iterations=50):
-    for _ in range(iterations):
-        traces = [(network(test[0], True), test[1]) for test in tests]
-        errors =[sum(expected-trace[-1] for trace,expected in traces)]
-        #trace = np.sum(trace[0] for trace in traces)
-        print("\n".join(map(str,traces)))
-        print('error')
-        print(errors)
-        #print(trace)
-        for index, weights in reversed(
-            list(enumerate(network.weights))):
-            
-            print(index)
-            error = errors[-1]
-            
 
+def backpropagate(network, tests, iterations=50):
+
+    #convert tests into numpy matrices
+    tests = [(np.matrix(inputs, dtype=np.float64).reshape(len(inputs), 1),
+            np.matrix(expected, dtype=np.float64).reshape(len(expected), 1))
+            for inputs, expected in tests]
+    
+    for _ in range(iterations):
+
+        #accumulate the weight and bias deltas
+        weight_delta = [np.zeros(matrix.shape) for matrix in network.weights]
+        bias_delta = [np.zeros(matrix.shape) for matrix in network.bias]
+
+        #iterate over the tests
+        for potentials, expected in tests:
+
+            #input the potentials into the network
+            #calling the network with trace == True returns a list of matrices,
+            #representing the potentials of each layer 
+            trace = network(potentials, trace=True)
+            errors = [expected - trace[-1]]
+            
+            #iterate over the layers backwards
+            for weight_matrix, layer in reversed(list(zip(network.weights, trace))):
+                #compute the error vector for a layer
+                errors.append(np.multiply(weight_matrix.transpose()*errors[-1],
+                                          network.sigmoid.derivative(layer)))
+            
+            #remove the input layer
+            errors.pop()
+            errors.reverse()
+
+            #compute the deltas for bias and weight
+            for index, error in enumerate(errors):
+                bias_delta[index] += error
+                weight_delta[index] += error * trace[index].transpose()
+
+        #apply the deltas
+        for index, delta in enumerate(weight_delta):
+            network.weights[index] += delta
+        for index, delta in enumerate(bias_delta):
+            network.bias[index] += delta
+
+        
 if True:
     global network
-    tests = [((0,0),0),((0,1),1),((1,0),1),((1,1),0)]
-    network = NeuralNetwork.fromlayers([2,3,1])
-    backpropagate(network, tests, 1)
+    tests = [((0,0),[0]),((0,1),[1]),((1,0),[1]),((1,1),[0])]
+    network = NeuralNetwork.fromlayers([2,5,1])
+    backpropagate(network, tests, 500)
+    for test in tests:
+        print(test[0])
+        print(str(network(test[0])) + str(test[1]))
