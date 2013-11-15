@@ -77,12 +77,16 @@ class NeuralNetwork:
                 "\n".join(map(repr, self.bias)))
 
 
-def backpropagate(network, tests, iterations=500, step_size=.01, debug=False):
+def backpropagate(network, tests, iterations=500, step_size=.05, momentum=.01, debug=False):
 
     #convert tests into numpy matrices
     tests = [(np.matrix(inputs, dtype=np.float64).reshape(len(inputs), 1),
             np.matrix(expected, dtype=np.float64).reshape(len(expected), 1))
             for inputs, expected in tests]
+
+    #keep track of old values for momentum
+    weight_delta_old = [np.zeros(matrix.shape) for matrix in network.weights]
+    bias_delta_old = [np.zeros(matrix.shape) for matrix in network.bias]
     
     for epoch in range(iterations):
 
@@ -91,7 +95,7 @@ def backpropagate(network, tests, iterations=500, step_size=.01, debug=False):
         bias_delta = [np.zeros(matrix.shape) for matrix in network.bias]
 
         #optional error counter
-        error = 0
+        error_counter = 0
         
         #iterate over the tests
         for potentials, expected in tests:
@@ -103,7 +107,7 @@ def backpropagate(network, tests, iterations=500, step_size=.01, debug=False):
             errors = [expected - trace[-1]]
 
             if debug:
-                error += np.sum(errors)
+                error_counter += abs(float(np.sum(errors)))
             
             #iterate over the layers backwards
             for weight_matrix, layer in reversed(list(zip(network.weights, trace))):
@@ -121,13 +125,17 @@ def backpropagate(network, tests, iterations=500, step_size=.01, debug=False):
                 weight_delta[index] += error * trace[index].transpose()
 
         if debug:
-            print('epoch %s: error=%s'%(epoch, abs(float(error))))
+            print('epoch %s: error=%s'%(epoch, error_counter))
 
         #apply the deltas
         for index, delta in enumerate(weight_delta):
-            network.weights[index] += step_size * delta
+            network.weights[index] += step_size * delta + momentum * weight_delta_old[index]
         for index, delta in enumerate(bias_delta):
-            network.bias[index] += step_size * delta
+            network.bias[index] += step_size * delta + momentum * bias_delta_old[index]
+
+        #set current deltas to old
+        weight_delta_old = weight_delta
+        bias_delta_old = bias_delta
             
     if debug:
         for potentials, expected in tests:
@@ -139,4 +147,4 @@ if True:
     global network
     tests = [((0,0),[0]),((0,1),[1]),((1,0),[1]),((1,1),[0])]
     network = NeuralNetwork.fromlayers([2,5,1])
-    backpropagate(network, tests, 50, debug=True)
+    backpropagate(network, tests, 500, debug=True)
