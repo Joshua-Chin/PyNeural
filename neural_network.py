@@ -77,7 +77,7 @@ class NeuralNetwork:
                 "\n".join(map(repr, self.bias)))
 
 
-def backpropagate(network, tests, iterations=50):
+def backpropagate(network, tests, iterations=50, step_size=.01):
 
     #convert tests into numpy matrices
     tests = [(np.matrix(inputs, dtype=np.float64).reshape(len(inputs), 1),
@@ -116,16 +116,17 @@ def backpropagate(network, tests, iterations=50):
 
         #apply the deltas
         for index, delta in enumerate(weight_delta):
-            network.weights[index] += delta
+            network.weights[index] += step_size * delta
         for index, delta in enumerate(bias_delta):
-            network.bias[index] += delta
+            network.bias[index] += step_size * delta
 
         
 if True:
     global network
     tests = [((0,0),[0]),((0,1),[1]),((1,0),[1]),((1,1),[0])]
     network = NeuralNetwork.fromlayers([2,5,1])
-    backpropagate(network, tests, 500)
+    import cProfile
+    cProfile.run('backpropagate(network, tests, 5000)')
     for test in tests:
         print(test[0])
         print(str(network(test[0])) + str(test[1]))
