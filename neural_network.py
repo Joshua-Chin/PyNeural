@@ -77,19 +77,22 @@ class NeuralNetwork:
                 "\n".join(map(repr, self.bias)))
 
 
-def backpropagate(network, tests, iterations=50, step_size=.01):
+def backpropagate(network, tests, iterations=500, step_size=.01, debug=False):
 
     #convert tests into numpy matrices
     tests = [(np.matrix(inputs, dtype=np.float64).reshape(len(inputs), 1),
             np.matrix(expected, dtype=np.float64).reshape(len(expected), 1))
             for inputs, expected in tests]
     
-    for _ in range(iterations):
+    for epoch in range(iterations):
 
         #accumulate the weight and bias deltas
         weight_delta = [np.zeros(matrix.shape) for matrix in network.weights]
         bias_delta = [np.zeros(matrix.shape) for matrix in network.bias]
 
+        #optional error counter
+        error = 0
+        
         #iterate over the tests
         for potentials, expected in tests:
 
@@ -98,6 +101,9 @@ def backpropagate(network, tests, iterations=50, step_size=.01):
             #representing the potentials of each layer 
             trace = network(potentials, trace=True)
             errors = [expected - trace[-1]]
+
+            if debug:
+                error += np.sum(errors)
             
             #iterate over the layers backwards
             for weight_matrix, layer in reversed(list(zip(network.weights, trace))):
@@ -114,19 +120,23 @@ def backpropagate(network, tests, iterations=50, step_size=.01):
                 bias_delta[index] += error
                 weight_delta[index] += error * trace[index].transpose()
 
+        if debug:
+            print('epoch %s: error=%s'%(epoch, abs(float(error))))
+
         #apply the deltas
         for index, delta in enumerate(weight_delta):
             network.weights[index] += step_size * delta
         for index, delta in enumerate(bias_delta):
             network.bias[index] += step_size * delta
+            
+    if debug:
+        for potentials, expected in tests:
+            print("input: %s => output: %s, expected %s"%(
+                potentials.tolist(), network(potentials).tolist(), expected.tolist()))
 
         
 if True:
     global network
     tests = [((0,0),[0]),((0,1),[1]),((1,0),[1]),((1,1),[0])]
     network = NeuralNetwork.fromlayers([2,5,1])
-    import cProfile
-    cProfile.run('backpropagate(network, tests, 5000)')
-    for test in tests:
-        print(test[0])
-        print(str(network(test[0])) + str(test[1]))
+    backpropagate(network, tests, 50, debug=True)
