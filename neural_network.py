@@ -3,16 +3,6 @@ import itertools
 import random
 import math
 
-def pairwise(iterable):
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-def logistic(x):
-    return np.tanh(x)
-logistic.derivative = lambda x : (1-np.square(x))
-
 class NeuralNetwork:
 
     def __init__(self, weights, bias=None, sigmoid=None):
@@ -142,6 +132,15 @@ def backpropagate(network, tests, iterations=500, step_size=.05, momentum=.01, d
             print("input: %s => output: %s, expected %s"%(
                 potentials.tolist(), network(potentials).tolist(), expected.tolist()))
 
+def logistic(x):
+    return np.tanh(x)
+logistic.derivative = lambda x : (1-np.square(x))
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
         
 if True:
     global network
