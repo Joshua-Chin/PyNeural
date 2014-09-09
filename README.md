@@ -1,4 +1,4 @@
 PyNeural
 ========
 
-A neural network in python using numpy
+PyNeural is a fast feed-forward neural network that can train using backpropagation with momentum. 
